@@ -61,6 +61,10 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 app.get('/style.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'style.css'));
 });
