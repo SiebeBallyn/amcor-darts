@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);let me=null;
 async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json',...(opt.headers||{})},...opt});const d=await r.json();if(!r.ok)throw Error(d.error||'Er ging iets mis.');return d}
 function esc(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-async function loadNames(){const d=await api('/api/public-players').catch(()=>null);if(d){$('#name').innerHTML='<option value="">Kies je naam…</option>'+d.players.map(p=>`<option>${esc(p.name)}</option>`).join('')}}
+async function loadNames(){}
 async function refreshBoard(){const d=await api('/api/leaderboard');$('#weekLabel').textContent=d.label;$('#board').innerHTML=d.rows.length?d.rows.map((r,i)=>`<tr class="${i===0?'top':''}"><td>${i===0?'🏆':i+1}</td><td><strong>${esc(r.name)}</strong></td><td class="best">${r.best}</td><td>${r.throws}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Nog geen worpen deze week. Wees de eerste!</td></tr>';
  if(d.rows[0]){$('#winnerName').textContent=d.rows[0].name;$('#winnerScore').textContent=d.rows[0].best;$('#winnerRule').textContent=`Beste worp · ${d.rows[0].throws} ${d.rows[0].throws===1?'worp':'worpen'} deze week`}
  else{$('#winnerName').textContent='Nog niemand bovenaan';$('#winnerScore').textContent='—'}
