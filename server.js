@@ -38,6 +38,8 @@ try {
   db.prepare("ALTER TABLE players ADD COLUMN code TEXT NOT NULL DEFAULT ''").run();
 } catch (_) {}
 
+app.set('trust proxy', 1);
+
 app.use(express.json());
 
 app.use(session({
