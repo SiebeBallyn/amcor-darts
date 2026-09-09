@@ -34,8 +34,15 @@ CREATE TABLE IF NOT EXISTS scores (
 `);
 
 // Upgrade databases from the previous prototype.
+// Older databases may still contain the unused code column. We keep it only
+// for database compatibility; the application no longer reads or writes it.
+// Player names are unique regardless of capitalization.
 try {
   db.prepare("ALTER TABLE players ADD COLUMN code TEXT NOT NULL DEFAULT ''").run();
+} catch (_) {}
+
+try {
+  db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_players_name_nocase ON players(name COLLATE NOCASE)").run();
 } catch (_) {}
 
 app.set('trust proxy', 1);
@@ -138,14 +145,10 @@ function cleanName(v) {
   return String(v || '').trim().replace(/\s+/g, ' ');
 }
 
-function validCode(v) {
-  return /^\d{4}$/.test(String(v || ''));
-}
-
 function requirePlayer(req, res, next) {
   if (!req.session.player) {
     return res.status(401).json({
-      error: 'Kies eerst je naam en geef je persoonlijke code in.'
+      error: 'Kies eerst je naam.'
     });
   }
 
@@ -222,33 +225,20 @@ app.get('/api/me', (req, res) => {
 // Player login
 app.post('/api/select-player', (req, res) => {
   const name = cleanName(req.body.name);
-  const code = String(req.body.code || '').trim();
 
   if (!name || name.length > 60) {
     return res.status(400).json({
-      error: 'Geef een geldige naam in.'
-    });
-  }
-
-  if (!validCode(code)) {
-    return res.status(400).json({
-      error: 'Je persoonlijke code bestaat uit 4 cijfers.'
+      error: 'Geef je voor- en achternaam in.'
     });
   }
 
   const p = db.prepare(
-    'SELECT id,name,code,active FROM players WHERE lower(name)=lower(?)'
+    'SELECT id,name,active FROM players WHERE name COLLATE NOCASE = ? COLLATE NOCASE'
   ).get(name);
 
   if (!p || !p.active) {
     return res.status(401).json({
       error: 'Deze naam staat niet in de deelnemerslijst. Vraag de organisatie om hulp.'
-    });
-  }
-
-  if (p.code !== code) {
-    return res.status(401).json({
-      error: 'De code klopt niet. Probeer opnieuw.'
     });
   }
 
@@ -320,6 +310,26 @@ app.post('/api/scores', requirePlayer, (req, res) => {
   }
 });
 
+// Player's all-time statistics
+app.get('/api/my-stats', requirePlayer, (req, res) => {
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) AS throws,
+      COALESCE(SUM(score), 0) AS total,
+      COALESCE(AVG(score), 0) AS average,
+      COALESCE(MAX(score), 0) AS best
+    FROM scores
+    WHERE player_id=?
+  `).get(req.session.player.id);
+
+  res.json({
+    throws: row.throws,
+    total: row.total,
+    average: row.throws ? Number(row.average.toFixed(2)) : null,
+    best: row.throws ? row.best : null
+  });
+});
+
 // Leaderboard
 app.get('/api/leaderboard', (req, res) => {
   const start = req.query.week || weekStart();
@@ -354,7 +364,7 @@ app.post('/api/admin/logout', (req, res) => {
 app.get('/api/admin/players', requireAdmin, (req, res) => {
   res.json(
     db.prepare(`
-      SELECT id,name,code,active
+      SELECT id,name,active
       FROM players
       ORDER BY active DESC,
                name COLLATE NOCASE
@@ -364,25 +374,18 @@ app.get('/api/admin/players', requireAdmin, (req, res) => {
 
 app.post('/api/admin/players', requireAdmin, (req, res) => {
   const name = cleanName(req.body.name);
-  const code = String(req.body.code || '').trim();
 
   if (!name || name.length > 60) {
     return res.status(400).json({
-      error: 'Geef een geldige naam in.'
-    });
-  }
-
-  if (!validCode(code)) {
-    return res.status(400).json({
-      error: 'Code moet uit exact 4 cijfers bestaan.'
+      error: 'Geef een geldige voor- en achternaam in.'
     });
   }
 
   try {
     const info = db.prepare(`
-      INSERT INTO players(name,code,active)
-      VALUES(?,?,1)
-    `).run(name, code);
+      INSERT INTO players(name,active)
+      VALUES(?,1)
+    `).run(name);
 
     res.json({
       ok: true,
@@ -390,7 +393,7 @@ app.post('/api/admin/players', requireAdmin, (req, res) => {
     });
   } catch (e) {
     res.status(409).json({
-      error: 'Deze naam bestaat al.'
+      error: 'Deze naam bestaat al (hoofdletters tellen niet mee).'
     });
   }
 });
@@ -422,19 +425,6 @@ app.patch('/api/admin/players/:id', requireAdmin, (req, res) => {
 
     fields.push('name=?');
     vals.push(name);
-  }
-
-  if (req.body.code !== undefined) {
-    const code = String(req.body.code).trim();
-
-    if (!validCode(code)) {
-      return res.status(400).json({
-        error: 'Code moet 4 cijfers zijn.'
-      });
-    }
-
-    fields.push('code=?');
-    vals.push(code);
   }
 
   if (req.body.active !== undefined) {

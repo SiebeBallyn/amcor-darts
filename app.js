@@ -7,8 +7,19 @@ async function refreshBoard(){const d=await api('/api/leaderboard');$('#weekLabe
  else{$('#winnerName').textContent='Nog niemand bovenaan';$('#winnerScore').textContent='—'}
  if(me){const mine=d.rows.find(r=>r.id===me.id);$('#myStats').innerHTML=mine?`<div class="big-stat">${mine.best}</div><strong>Beste worp</strong><span>${mine.throws} ${mine.throws===1?'worp':'worpen'} deze week</span>`:`<div class="big-stat muted-number">—</div><strong>Nog geen worp</strong><span>Doe vandaag mee!</span>`}}
 async function init(){await loadNames();const d=await api('/api/me');if(d.player){me=d.player;showApp();const t=await api('/api/today');setSubmitted(t)}await refreshBoard()}
-function showApp(){$('#nameView').classList.add('hidden');$('#appView').classList.remove('hidden');$('#playerName').textContent=me.name}
+async function showApp(){
+ $('#nameView').classList.add('hidden');
+ $('#appView').classList.remove('hidden');
+ $('#playerName').textContent=me.name;
+ await refreshMyStats();
+}
+async function refreshMyStats(){
+ const s=await api('/api/my-stats');
+ $('#allTimeStats').innerHTML=s.throws
+   ? `<div class="big-stat">${s.average}</div><strong>Gemiddelde</strong><span>${s.throws} ${s.throws===1?'worp':'worpen'} over alle weken</span>`
+   : `<div class="big-stat muted-number">—</div><strong>Nog geen historiek</strong><span>Je eerste worp telt meteen mee.</span>`;
+}
 function setSubmitted(t){if(t.submitted){$('#scoreMsg').innerHTML=`✓ Je hebt vandaag al <strong>${t.score}</strong> gegooid. Tot morgen!`;$('#score').disabled=true;$('#scoreForm button').disabled=true}else{$('#score').disabled=false;$('#scoreForm button').disabled=false}}
-$('#nameForm').addEventListener('submit',async e=>{e.preventDefault();try{const d=await api('/api/select-player',{method:'POST',body:JSON.stringify({name:$('#name').value,code:$('#code').value})});me=d.player;showApp();setSubmitted(await api('/api/today'));await refreshBoard();document.getElementById('meedoen').scrollIntoView({behavior:'smooth'})}catch(x){$('#nameMsg').textContent=x.message}});
-$('#scoreForm').addEventListener('submit',async e=>{e.preventDefault();try{const d=await api('/api/scores',{method:'POST',body:JSON.stringify({score:$('#score').value})});$('#scoreMsg').innerHTML=`✓ <strong>${d.score}</strong> is binnen! Tot morgen.`;setSubmitted({submitted:true,score:d.score});await refreshBoard()}catch(x){$('#scoreMsg').textContent=x.message}});
+$('#nameForm').addEventListener('submit',async e=>{e.preventDefault();try{const d=await api('/api/select-player',{method:'POST',body:JSON.stringify({name:$('#name').value})});me=d.player;showApp();setSubmitted(await api('/api/today'));await refreshBoard();document.getElementById('meedoen').scrollIntoView({behavior:'smooth'})}catch(x){$('#nameMsg').textContent=x.message}});
+$('#scoreForm').addEventListener('submit',async e=>{e.preventDefault();try{const d=await api('/api/scores',{method:'POST',body:JSON.stringify({score:$('#score').value})});$('#scoreMsg').innerHTML=`✓ <strong>${d.score}</strong> is binnen! Tot morgen.`;setSubmitted({submitted:true,score:d.score});await refreshMyStats();await refreshBoard()}catch(x){$('#scoreMsg').textContent=x.message}});
 $('#logout').addEventListener('click',async()=>{await api('/api/logout',{method:'POST'});location.reload()});init();
