@@ -42,8 +42,9 @@ async function initDatabase() {
     CREATE UNIQUE INDEX IF NOT EXISTS one_throw_per_player_per_day ON throws(player_id, throw_date);
   `);
 }
-
+app.set('trust proxy', 1);
 app.use(express.json());
+
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
