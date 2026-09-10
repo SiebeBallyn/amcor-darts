@@ -7,21 +7,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'amcor-admin';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-secret-before-production';
-const DATABASE_URL = process.env.DATABASE_URL;
-
-if (!DATABASE_URL) {
-  console.error('DATABASE_URL ontbreekt. Voeg de Supabase Session Pooler URI toe als Render environment variable.');
-  process.exit(1);
-}
-
 const pool = new Pool({
-  connectionString: DATABASE_URL,
+  host: process.env.PGHOST,
+  port: Number(process.env.PGPORT || 5432),
+  database: process.env.PGDATABASE,
+  user: process.env.PGUSER,
+  password: process.env.PGPASSWORD,
   ssl: { rejectUnauthorized: false },
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
 });
-
 async function query(text, params = []) {
   return pool.query(text, params);
 }
