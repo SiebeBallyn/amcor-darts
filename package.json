@@ -1,14 +1,11 @@
 {
-  "name":"amcor-darts-challenge",
-  "version":"2.0.0",
-  "private":true,
-  "description":"Amcor Darts Challenge voor Roeselare",
-  "main":"server.js",
-  "scripts":{"start":"node server.js"},
-  "dependencies":{
-    "better-sqlite3":"^11.7.0",
-    "express":"^4.21.2",
-    "express-session":"^1.18.1",
-    "pg":"^8.16.3"
+  "name": "amcor-darts-challenge",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {"start": "node server.js"},
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.16.3"
   }
 }
